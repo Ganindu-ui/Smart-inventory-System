@@ -10,14 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.x",
+    "@emotion/styled": "^11.x",
+    "@mui/icons-material": "^5.x",
+    "@mui/material": "^5.x",
+    "axios": "^1.x",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.x",
-    "@mui/material": "^5.x",
-    "@mui/icons-material": "^5.x",
-    "@emotion/react": "^11.x",
-    "@emotion/styled": "^11.x",
-    "axios": "^1.x"
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

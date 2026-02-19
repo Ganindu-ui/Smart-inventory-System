@@ -7,8 +7,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from database import get_db
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import models, schemas
 
 # Create router for sales endpoints
@@ -145,3 +146,72 @@ def delete_sale(sale_id: int, db: Session = Depends(get_db)):
     
     return {"message": "Sale deleted and inventory restored"}
 
+# ============================================================
+# SALES ANALYTICS ENDPOINT
+# ============================================================
+@router.get("/analytics")
+def get_sales_analytics(db: Session = Depends(get_db)):
+    """Return sales analytics data.
+    
+    Computes daily revenue, monthly revenue, top selling product,
+    and a 7-day daily sales chart.
+    
+    Returns:
+        dict: Analytics data with daily_revenue, monthly_revenue,
+              top_selling_product, and daily_sales_chart
+    """
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Daily revenue
+    daily_revenue = db.query(
+        func.coalesce(func.sum(models.Sale.total_price), 0)
+    ).filter(models.Sale.sale_date >= today_start).scalar()
+
+    # Monthly revenue
+    monthly_revenue = db.query(
+        func.coalesce(func.sum(models.Sale.total_price), 0)
+    ).filter(models.Sale.sale_date >= month_start).scalar()
+
+    # Top selling product (by total quantity sold)
+    top_product_row = db.query(
+        models.Sale.product_id,
+        func.sum(models.Sale.quantity).label("total_qty")
+    ).group_by(models.Sale.product_id).order_by(
+        func.sum(models.Sale.quantity).desc()
+    ).first()
+
+    top_selling_product = None
+    if top_product_row:
+        product = db.query(models.Product).filter(
+            models.Product.id == top_product_row.product_id
+        ).first()
+        top_selling_product = {
+            "id": top_product_row.product_id,
+            "name": product.name if product else "Unknown",
+            "total_quantity_sold": int(top_product_row.total_qty),
+        }
+
+    # Daily sales chart — last 7 days
+    daily_sales_chart = []
+    for i in range(6, -1, -1):
+        day_start = (today_start - timedelta(days=i))
+        day_end = day_start + timedelta(days=1)
+        revenue = db.query(
+            func.coalesce(func.sum(models.Sale.total_price), 0)
+        ).filter(
+            models.Sale.sale_date >= day_start,
+            models.Sale.sale_date < day_end
+        ).scalar()
+        daily_sales_chart.append({
+            "date": day_start.strftime("%b %d"),
+            "revenue": float(revenue),
+        })
+
+    return {
+        "daily_revenue": float(daily_revenue),
+        "monthly_revenue": float(monthly_revenue),
+        "top_selling_product": top_selling_product,
+        "daily_sales_chart": daily_sales_chart,
+    }

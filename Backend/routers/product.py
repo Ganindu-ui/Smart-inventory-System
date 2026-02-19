@@ -111,6 +111,11 @@ def delete_product(
             detail="Product not found"
         )
 
+    # Delete associated sales records first (FK constraint)
+    db.query(models.Sale).filter(
+        models.Sale.product_id == product_id
+    ).delete()
+
     # Delete from database
     db.delete(product)
     db.commit()
