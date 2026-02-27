@@ -1,4 +1,4 @@
-// Products.jsx — Premium inventory products table
+// Products.jsx — Premium inventory products table (no emojis)
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -103,7 +103,7 @@ function Products({ token, user }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Search */}
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', opacity: 0.4 }}>🔍</span>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.4, display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
             <input
               type="text" placeholder="Search products..."
               value={search} onChange={e => setSearch(e.target.value)}
@@ -151,7 +151,7 @@ function Products({ token, user }) {
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 20, border: '1px dashed var(--border)' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>📭</div>
+          <div style={{ marginBottom: 16, opacity: 0.35 }}><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
           <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
             {search ? 'No products match your search' : (user?.role === 'admin' ? 'No products yet. Click "Add Product" to get started.' : 'No products found. Ask an admin to add products.')}
           </div>
