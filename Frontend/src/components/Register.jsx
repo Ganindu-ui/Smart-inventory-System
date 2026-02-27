@@ -1,301 +1,200 @@
-// ============================================================
-// REGISTER COMPONENT
-// ============================================================
-// User registration form for creating new accounts.
-// Allows users to set username, email, password, and role.
-// Includes form validation and error handling.
-
+// Register.jsx — Split-screen premium register page
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper, MenuItem, Alert, Container } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-// ============================================================
-// REGISTER COMPONENT
-// ============================================================
+function FloatingInput({ label, type = 'text', name, value, onChange, disabled, placeholder, children }) {
+  const [focused, setFocused] = useState(false);
+  if (children) {
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <label style={{
+          display: 'block', fontSize: '0.8rem', fontWeight: 600,
+          color: focused ? 'var(--primary)' : 'var(--text-secondary)',
+          marginBottom: 7, transition: 'color 0.2s', fontFamily: 'var(--font)',
+        }}>
+          {label}
+        </label>
+        <select
+          name={name} value={value} onChange={onChange} disabled={disabled}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          style={{
+            width: '100%', padding: '13px 18px',
+            border: `2px solid ${focused ? 'var(--primary)' : 'var(--border)'}`,
+            borderRadius: 12, outline: 'none',
+            fontFamily: 'var(--font)', fontSize: '0.95rem',
+            color: 'var(--text-primary)', background: '#fff',
+            transition: 'border-color 0.25s, box-shadow 0.25s',
+            boxShadow: focused ? '0 0 0 4px rgba(108,99,255,0.12)' : 'none',
+            cursor: 'pointer',
+          }}
+        >
+          {children}
+        </select>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <label style={{
+        display: 'block', fontSize: '0.8rem', fontWeight: 600,
+        color: focused ? 'var(--primary)' : 'var(--text-secondary)',
+        marginBottom: 7, transition: 'color 0.2s', fontFamily: 'var(--font)',
+      }}>
+        {label}
+      </label>
+      <input
+        type={type} name={name} value={value} onChange={onChange}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        disabled={disabled} placeholder={placeholder} required
+        style={{
+          width: '100%', padding: '13px 18px',
+          border: `2px solid ${focused ? 'var(--primary)' : 'var(--border)'}`,
+          borderRadius: 12, outline: 'none',
+          fontFamily: 'var(--font)', fontSize: '0.95rem',
+          color: 'var(--text-primary)', background: '#fff',
+          transition: 'border-color 0.25s, box-shadow 0.25s',
+          boxShadow: focused ? '0 0 0 4px rgba(108,99,255,0.12)' : 'none',
+        }}
+      />
+    </div>
+  );
+}
+
 function Register() {
-  // ============================================================
-  // STATE MANAGEMENT
-  // ============================================================
-  const [form, setForm] = useState({ 
-    username: '', 
-    email: '', 
-    password: '', 
-    role: 'staff' 
-  });
-  const [error, setError] = useState('');        // Error message display
-  const [success, setSuccess] = useState('');    // Success message display
-  const [loading, setLoading] = useState(false); // Loading state for submit button
+  const [form, setForm] = useState({ username: '', email: '', password: '', role: 'staff' });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ============================================================
-  // FORM INPUT HANDLER
-  // ============================================================
-  /**
-   * Updates form state when any input field changes
-   * Maintains all form field values in single state object
-   */
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // ============================================================
-  // FORM SUBMISSION HANDLER
-  // ============================================================
-  /**
-   * Handles form submission and user registration
-   * Makes API request to backend register endpoint
-   * On success: shows success message and redirects to login
-   * On failure: displays error message to user
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
+    setError(''); setSuccess(''); setLoading(true);
     try {
-      // Send registration request to backend API
       await axios.post('http://localhost:8000/users/register', form);
-      
-      // Show success message
-      setSuccess('✓ Registration successful! Redirecting to login...');
-      
-      // Clear form fields
+      setSuccess('Registration successful! Redirecting to login...');
       setForm({ username: '', email: '', password: '', role: 'staff' });
-      
-      // Redirect to login page after 2 seconds
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      console.error('Register error:', err);
-      // Display error message from API or generic message
-      setError(err.response?.data?.detail || 'Registration failed');
+      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh',
-        }}
-      >
-        {/* Registration Form Card */}
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            p: 4, 
-            width: '100%',
-            animation: 'scaleUp 0.4s ease-in-out',
-            backdropFilter: 'blur(10px)',
-            background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '15px',
-            boxShadow: '0 8px 32px rgba(31, 38, 135, 0.37)',
-          }}
-        >
-          {/* Page Title */}
-          <Typography 
-            variant="h5" 
-            component="h1" 
-            gutterBottom 
-            sx={{ 
-              mb: 3, 
-              textAlign: 'center', 
-              fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            📝 Create Account
-          </Typography>
+    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', fontFamily: 'var(--font)' }}>
+      {/* Left — branded (different gradient + messaging) */}
+      <div style={{
+        flex: 1, background: 'var(--grad-pink)', position: 'relative',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 60, overflow: 'hidden',
+      }}>
+        <div className="blob-1" style={{ position: 'absolute', top: -60, right: -80, background: 'rgba(255,255,255,0.08)' }} />
+        <div className="blob-2" style={{ position: 'absolute', bottom: -40, left: -60, background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', color: '#fff' }}>
+          <div className="float" style={{
+            width: 80, height: 80, borderRadius: 24,
+            background: 'rgba(255,255,255,0.2)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 28px', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.3)', fontSize: '2.2rem',
+          }}>
+            🚀
+          </div>
+          <h1 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 14 }}>
+            Join SmartStock
+          </h1>
+          <p style={{ opacity: 0.85, fontSize: '1rem', lineHeight: 1.7, maxWidth: 280 }}>
+            Create an account to start managing your inventory with powerful tools and real-time analytics.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 36, alignItems: 'flex-start', maxWidth: 260, margin: '36px auto 0' }}>
+            {['✅ Real-time inventory tracking', '📊 Sales analytics dashboard', '🔐 Role-based access control', '📦 Product management'].map(item => (
+              <div key={item} style={{
+                padding: '8px 16px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.15)',
+                fontSize: '0.82rem', fontWeight: 600,
+                backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.2)',
+              }}>
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-          {/* Error Alert */}
+      {/* Right — form */}
+      <div style={{
+        width: '480px', minWidth: '360px', background: '#fff',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '60px 52px',
+        animation: 'slideInRight 0.5s var(--ease) both',
+      }}>
+        <div style={{ width: '100%', maxWidth: 360 }}>
+          <div style={{ marginBottom: 32 }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>
+              Create account ✨
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Fill in the details below to get started
+            </p>
+          </div>
+
           {error && (
-            <Alert 
-              severity="error" 
-              sx={{ 
-                mb: 2,
-                animation: 'slideInAlert 0.3s ease-in-out',
-              }}
-            >
-              {error}
-            </Alert>
+            <div className="alert-anim" style={{
+              padding: '12px 16px', background: 'rgba(252,92,101,0.1)',
+              border: '1px solid rgba(252,92,101,0.3)', borderRadius: 10,
+              color: '#c0392b', marginBottom: 20, fontSize: '0.87rem',
+            }}>⚠️ {error}</div>
           )}
-
-          {/* Success Alert */}
           {success && (
-            <Alert 
-              severity="success" 
-              sx={{ 
-                mb: 2,
-                animation: 'slideInAlert 0.3s ease-in-out',
-              }}
-            >
-              {success}
-            </Alert>
+            <div className="alert-anim" style={{
+              padding: '12px 16px', background: 'rgba(67,233,123,0.12)',
+              border: '1px solid rgba(67,233,123,0.35)', borderRadius: 10,
+              color: '#2eb86e', marginBottom: 20, fontSize: '0.87rem',
+            }}>✅ {success}</div>
           )}
 
-          {/* Registration Form */}
           <form onSubmit={handleSubmit}>
-            {/* Username Input Field */}
-            <TextField
-              label="Username"
-              name="username"
-              fullWidth
-              margin="normal"
-              value={form.username}
-              onChange={handleChange}
-              required
-              disabled={loading}
-              placeholder="Choose a username (3+ characters)"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease',
-                  '&:hover fieldset': {
-                    borderColor: '#667eea',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#667eea',
-                    boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-                  },
-                },
-              }}
-            />
+            <FloatingInput label="Username" name="username" value={form.username} onChange={handleChange} disabled={loading} placeholder="Choose a username (3+ chars)" />
+            <FloatingInput label="Email Address" type="email" name="email" value={form.email} onChange={handleChange} disabled={loading} placeholder="you@example.com" />
+            <FloatingInput label="Password" type="password" name="password" value={form.password} onChange={handleChange} disabled={loading} placeholder="Create a strong password (6+ chars)" />
+            <FloatingInput label="Role" name="role" value={form.role} onChange={handleChange} disabled={loading}>
+              <option value="staff">👤 Staff</option>
+              <option value="admin">👨‍💼 Admin</option>
+            </FloatingInput>
 
-            {/* Email Input Field */}
-            <TextField
-              label="Email"
-              name="email"
-              type="email"
-              fullWidth
-              margin="normal"
-              value={form.email}
-              onChange={handleChange}
-              required
-              disabled={loading}
-              placeholder="Enter your email address"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease',
-                  '&:hover fieldset': {
-                    borderColor: '#667eea',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#667eea',
-                    boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-                  },
-                },
-              }}
-            />
-
-            {/* Password Input Field */}
-            <TextField
-              label="Password"
-              name="password"
-              type="password"
-              fullWidth
-              margin="normal"
-              value={form.password}
-              onChange={handleChange}
-              required
-              disabled={loading}
-              placeholder="Create a strong password (6+ characters)"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease',
-                  '&:hover fieldset': {
-                    borderColor: '#667eea',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#667eea',
-                    boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-                  },
-                },
-              }}
-            />
-
-            {/* Role Selection Dropdown */}
-            <TextField
-              select
-              label="Role"
-              name="role"
-              fullWidth
-              margin="normal"
-              value={form.role}
-              onChange={handleChange}
-              required
-              disabled={loading}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease',
-                  '&:hover fieldset': {
-                    borderColor: '#667eea',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#667eea',
-                    boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-                  },
-                },
-              }}
-            >
-              <MenuItem value="admin">👨‍💼 Admin</MenuItem>
-              <MenuItem value="staff">👤 Staff</MenuItem>
-            </TextField>
-
-            {/* Submit Button */}
-            <Button
+            <button
               type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              sx={{ 
-                mt: 3,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                padding: '10px 20px',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 5px 20px rgba(102, 126, 234, 0.4)',
-                },
-              }}
               disabled={loading}
+              onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-2px)', e.currentTarget.style.boxShadow = '0 10px 30px rgba(240,93,251,0.4)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = '', e.currentTarget.style.boxShadow = '0 6px 20px rgba(240,93,251,0.2)')}
+              style={{
+                width: '100%', padding: '14px',
+                background: loading ? '#a0a0c0' : 'var(--grad-pink)',
+                border: 'none', borderRadius: 12,
+                color: '#fff', fontFamily: 'var(--font)',
+                fontWeight: 700, fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 6px 20px rgba(240,93,251,0.2)',
+                transition: 'transform 0.25s, box-shadow 0.25s', marginTop: 4,
+              }}
             >
-              {loading ? '🔄 Registering...' : '✓ Register'}
-            </Button>
+              {loading ? '⏳ Creating account...' : 'Create Account →'}
+            </button>
           </form>
 
-          {/* Login Link */}
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="body2">
-              Already have an account? {' '}
-              <a 
-                href="/login" 
-                style={{ 
-                  color: '#667eea', 
-                  textDecoration: 'none', 
-                  fontWeight: 'bold',
-                  transition: 'color 0.3s ease',
-                }}
-                onMouseEnter={(e) => e.target.style.color = '#764ba2'}
-                onMouseLeave={(e) => e.target.style.color = '#667eea'}
-              >
-                Login here
-              </a>
-            </Typography>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+          <p style={{ textAlign: 'center', marginTop: 28, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+            Already have an account?{' '}
+            <a href="/login" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
+              Sign in
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 

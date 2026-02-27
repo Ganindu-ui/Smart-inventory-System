@@ -1,130 +1,90 @@
-// ============================================================
-// MAIN APP COMPONENT
-// ============================================================
-// Root component that manages routing, authentication state,
-// theme configuration, and global layout structure.
-
+// App.jsx — Main layout with sidebar + content area
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline, Box, Container } from '@mui/material';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import './index.css';
+import './App.css';
 
-// Import page components
-import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Products from './components/Products';
 import Sales from './components/Sales';
 
-// ============================================================
-// MATERIAL UI THEME CONFIGURATION
-// ============================================================
-// Defines color scheme, typography, and component styling
-// for consistent Material Design throughout the application
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',  // Primary blue color
-    },
-    secondary: {
-      main: '#dc004e',  // Secondary pink/red color
-    },
-    background: {
-      default: '#fafafa',  // Light gray background
-      paper: '#ffffff',    // White paper color
-    },
-  },
-  typography: {
-    fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
-  },
-});
-
-// ============================================================
-// JWT TOKEN PARSING UTILITY
-// ============================================================
-// Decodes JWT token from localStorage to extract user claims
 function parseJwt(token) {
   if (!token) return null;
-  try {
-    // JWT format: header.payload.signature
-    // Decode the payload (middle part) from base64
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
 }
 
-// ============================================================
-// MAIN APP COMPONENT
-// ============================================================
+// Inner layout component — needs Router context for useLocation
+function AppLayout({ token, user, handleLogin, handleLogout }) {
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', background: 'var(--bg)' }}>
+      {/* Sidebar — hidden on auth pages */}
+      {!isAuthPage && (
+        <Sidebar isAuthenticated={!!token} user={user} onLogout={handleLogout} />
+      )}
+
+      {/* Main content area */}
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: '100vh',
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          background: isAuthPage ? 'transparent' : 'var(--bg)',
+          padding: isAuthPage ? 0 : '32px 36px',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Routes>
+          <Route path="/" element={<Dashboard user={user} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/products"
+            element={token ? <Products token={token} user={user} /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/sales"
+            element={token ? <Sales token={token} user={user} /> : <Navigate to="/login" />}
+          />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
 function App() {
-  // ============================================================
-  // STATE MANAGEMENT
-  // ============================================================
-  // token: JWT token for API authentication
-  // user: Decoded user data from JWT payload
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(() => parseJwt(localStorage.getItem('token')));
 
-  // ============================================================
-  // AUTHENTICATION HANDLERS
-  // ============================================================
-  
-  /**
-   * Handle user login
-   * Stores token in state and localStorage
-   * Extracts user info from JWT payload
-   */
   const handleLogin = (tok) => {
     setToken(tok);
     localStorage.setItem('token', tok);
     setUser(parseJwt(tok));
   };
 
-  /**
-   * Handle user logout
-   * Clears token and user info from state and localStorage
-   */
   const handleLogout = () => {
     setToken('');
     setUser(null);
     localStorage.removeItem('token');
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
-          {/* Navigation Bar - Always visible */}
-          <Navbar isAuthenticated={!!token} onLogout={handleLogout} />
-          
-          {/* Main Content Area - Routes rendered here */}
-          <Container maxWidth="lg" sx={{ flex: 1, py: 3 }}>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Dashboard user={user} />} />
-              <Route path="/login" element={<Login onLogin={handleLogin} />} />
-              <Route path="/register" element={<Register />} />
-              
-              {/* Protected Routes - Redirect to login if not authenticated */}
-              <Route 
-                path="/products" 
-                element={token ? <Products token={token} user={user} /> : <Navigate to="/login" />} 
-              />
-              <Route 
-                path="/sales" 
-                element={token ? <Sales token={token} user={user} /> : <Navigate to="/login" />} 
-              />
-            </Routes>
-          </Container>
-        </Box>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <AppLayout
+        token={token}
+        user={user}
+        handleLogin={handleLogin}
+        handleLogout={handleLogout}
+      />
+    </Router>
   );
 }
 

@@ -1,742 +1,403 @@
-// ============================================================
-// SALES COMPONENT
-// ============================================================
-// Displays sales transactions, statistics, and analytics.
-// Allows users to record new sales and delete existing ones.
-// Shows sales metrics, revenue analytics, and bar chart.
-
+// Sales.jsx — Premium sales management with analytics and charts
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Paper, Grid, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, CircularProgress, MenuItem } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-// ============================================================
-// SALES COMPONENT
-// ============================================================
+const CHART_COLORS = [
+  '#6c63ff', '#8b5cf6', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#f7b731',
+];
+
+function FloatingInput({ label, type = 'text', value, onChange, disabled, placeholder, children }) {
+  const [focused, setFocused] = useState(false);
+  const style = {
+    width: '100%', padding: '12px 16px',
+    border: `2px solid ${focused ? 'var(--primary)' : 'var(--border)'}`,
+    borderRadius: 10, outline: 'none', fontFamily: 'var(--font)', fontSize: '0.9rem',
+    color: 'var(--text-primary)', background: '#fff',
+    transition: 'border-color 0.25s, box-shadow 0.25s',
+    boxShadow: focused ? '0 0 0 4px rgba(108,99,255,0.12)' : 'none',
+  };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: focused ? 'var(--primary)' : 'var(--text-secondary)', marginBottom: 6, fontFamily: 'var(--font)', transition: 'color 0.2s' }}>
+        {label}
+      </label>
+      {children
+        ? <select value={value} onChange={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={disabled} style={{ ...style, cursor: 'pointer' }}>
+            {children}
+          </select>
+        : <input type={type} value={value} onChange={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={disabled} placeholder={placeholder} style={style} />
+      }
+    </div>
+  );
+}
+
+function AnalyticsCard({ label, value, prefix = '', suffix = '', gradient, icon, delay }) {
+  return (
+    <div
+      className="fade-slide-up"
+      style={{
+        animationDelay: delay, borderRadius: 18, padding: '22px 24px',
+        background: gradient, color: '#fff', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        transition: 'transform 0.3s var(--ease), box-shadow 0.3s var(--ease)',
+        cursor: 'default',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.2)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; }}
+    >
+      <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+      <div style={{ fontSize: '1.6rem', marginBottom: 10 }}>{icon}</div>
+      <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.85, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: '1.7rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+        {prefix}{typeof value === 'number' ? value.toFixed(0) : value}{suffix}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, prefix = '', gradient, delay }) {
+  return (
+    <div
+      className="fade-slide-up"
+      style={{
+        animationDelay: delay, background: '#fff', borderRadius: 18, padding: '20px 22px',
+        border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)',
+        transition: 'transform 0.3s, box-shadow 0.3s', cursor: 'default',
+        position: 'relative', overflow: 'hidden',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; }}
+    >
+      <div style={{ position: 'absolute', top: -15, right: -15, width: 70, height: 70, borderRadius: '50%', background: gradient, opacity: 0.12 }} />
+      <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+        {prefix}{typeof value === 'number' ? value.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}
+      </div>
+    </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: '#fff', border: '1px solid var(--border)', borderRadius: 12,
+        padding: '10px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        fontFamily: 'var(--font)',
+      }}>
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }}>{label}</p>
+        <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
+          Rs. {Number(payload[0].value).toFixed(2)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 function Sales({ token, user }) {
-  // ============================================================
-  // STATE MANAGEMENT
-  // ============================================================
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
-  const [newSale, setNewSale] = useState({
-    product_id: '',
-    quantity: '',
-    total_price: ''
-  });
+  const [search, setSearch] = useState('');
+  const [newSale, setNewSale] = useState({ product_id: '', quantity: '', total_price: '' });
+  const [stats, setStats] = useState({ totalSales: 0, todaySales: 0, thisWeekSales: 0, thisMonthSales: 0, orderCount: 0 });
+  const [analytics, setAnalytics] = useState({ daily_revenue: 0, monthly_revenue: 0, top_selling_product: null, daily_sales_chart: [] });
 
-  // Sales statistics (daily, weekly, monthly)
-  const [stats, setStats] = useState({
-    totalSales: 0,
-    todaySales: 0,
-    thisWeekSales: 0,
-    thisMonthSales: 0,
-    orderCount: 0,
-  });
+  const autoHide = (setter) => setTimeout(() => setter(''), 3500);
 
-  // Analytics data from backend
-  const [analytics, setAnalytics] = useState({
-    daily_revenue: 0,
-    monthly_revenue: 0,
-    top_selling_product: null,
-    daily_sales_chart: [],
-  });
-
-  // ============================================================
-  // FETCH SALES AND PRODUCTS WITH STATISTICS
-  // ============================================================
-  const fetchSalesAndProducts = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-
       const [salesRes, productsRes, analyticsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/sales/`),
         axios.get(`${API_BASE_URL}/products/`),
         axios.get(`${API_BASE_URL}/sales/analytics`),
       ]);
-
       setProducts(productsRes.data);
       setSales(salesRes.data);
       setAnalytics(analyticsRes.data);
 
-      // Calculate local stats
       const allSales = salesRes.data;
-      const totalAmount = allSales.reduce((sum, s) => sum + s.total_price, 0);
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      const todayAmount = allSales.filter(s => new Date(s.sale_date) >= today).reduce((sum, s) => sum + s.total_price, 0);
-      const weekAmount = allSales.filter(s => new Date(s.sale_date) >= weekAgo).reduce((sum, s) => sum + s.total_price, 0);
-      const monthAmount = allSales.filter(s => new Date(s.sale_date) >= monthStart).reduce((sum, s) => sum + s.total_price, 0);
-
       setStats({
-        totalSales: totalAmount,
-        todaySales: todayAmount,
-        thisWeekSales: weekAmount,
-        thisMonthSales: monthAmount,
+        totalSales: allSales.reduce((s, x) => s + x.total_price, 0),
+        todaySales: allSales.filter(s => new Date(s.sale_date) >= today).reduce((s, x) => s + x.total_price, 0),
+        thisWeekSales: allSales.filter(s => new Date(s.sale_date) >= weekAgo).reduce((s, x) => s + x.total_price, 0),
+        thisMonthSales: allSales.filter(s => new Date(s.sale_date) >= monthStart).reduce((s, x) => s + x.total_price, 0),
         orderCount: allSales.length,
       });
-      setError('');
     } catch (err) {
-      console.error('Error fetching data:', err);
       setError('Failed to load sales data');
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // COMPONENT LIFECYCLE
-  // ============================================================
-  useEffect(() => {
-    fetchSalesAndProducts();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // ============================================================
-  // CREATE SALE HANDLER
-  // ============================================================
   const handleCreate = async () => {
     if (!newSale.product_id || !newSale.quantity || !newSale.total_price) {
-      setError('⚠️ Please fill in all fields');
-      return;
+      setError('Please fill in all fields'); return;
     }
-
     setLoading(true);
     try {
-      const payload = {
+      await axios.post(`${API_BASE_URL}/sales/`, {
         product_id: parseInt(newSale.product_id),
         quantity: parseInt(newSale.quantity),
         total_price: parseFloat(newSale.total_price),
-      };
-
-      await axios.post(`${API_BASE_URL}/sales/`, payload);
-
+      });
       setOpen(false);
       setNewSale({ product_id: '', quantity: '', total_price: '' });
-      setSuccess('✓ Sale recorded successfully');
-      setTimeout(() => setSuccess(''), 3000);
-      fetchSalesAndProducts();
+      setSuccess('Sale recorded successfully'); autoHide(setSuccess);
+      fetchData();
     } catch (err) {
-      console.error('Create error:', err);
-      setError(err.response?.data?.detail || '❌ Failed to create sale');
-      setTimeout(() => setError(''), 3000);
-    } finally {
-      setLoading(false);
-    }
+      setError(err.response?.data?.detail || 'Failed to create sale'); autoHide(setError);
+    } finally { setLoading(false); }
   };
 
-  // ============================================================
-  // DELETE SALE HANDLER
-  // ============================================================
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this sale?')) {
-      try {
-        await axios.delete(`${API_BASE_URL}/sales/${id}`);
-        setSales(sales.filter(s => s.id !== id));
-        setSuccess('✓ Sale deleted successfully');
-        setTimeout(() => setSuccess(''), 3000);
-        fetchSalesAndProducts();
-      } catch (err) {
-        console.error('Delete error:', err);
-        setError('❌ Failed to delete sale');
-        setTimeout(() => setError(''), 3000);
-      }
+    if (!window.confirm('Delete this sale record?')) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/sales/${id}`);
+      setSales(sales.filter(s => s.id !== id));
+      setSuccess('Sale deleted'); autoHide(setSuccess);
+      fetchData();
+    } catch {
+      setError('Failed to delete sale'); autoHide(setError);
     }
   };
 
-  // Bar chart gradient colors
-  const chartColors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#fa709a'];
+  const filteredSales = sales.filter(s => {
+    const prod = products.find(p => p.id === s.product_id);
+    const name = prod ? prod.name : `#${s.product_id}`;
+    return name.toLowerCase().includes(search.toLowerCase());
+  });
 
-  // ============================================================
-  // RENDER - LOADING STATE
-  // ============================================================
-  if (loading && sales.length === 0) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <CircularProgress sx={{ animation: 'spin 1s linear infinite' }} />
-      </Box>
-    );
-  }
-
-  // ============================================================
-  // RENDER - MAIN CONTENT
-  // ============================================================
   return (
-    <Box sx={{ width: '100%', animation: 'fadeIn 0.4s ease-in-out' }}>
-      {/* Page Title */}
-      <Typography
-        variant="h4"
-        component="h1"
-        gutterBottom
-        sx={{
-          mb: 4,
-          fontWeight: 'bold',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}
-      >
-        💹 Sales Management
-      </Typography>
+    <div style={{ width: '100%', maxWidth: 1100, fontFamily: 'var(--font)' }}>
+      {/* Header */}
+      <div className="fade-slide-up" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
+        <div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>💹 Sales</h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
+            {sales.length} records · Track your revenue and transactions
+          </p>
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(108,99,255,0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 15px rgba(108,99,255,0.2)'; }}
+          style={{
+            padding: '10px 22px', background: 'var(--grad-primary)', border: 'none', borderRadius: 10,
+            color: '#fff', fontFamily: 'var(--font)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(108,99,255,0.2)', transition: 'transform 0.25s, box-shadow 0.25s',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <span>+</span> Record Sale
+        </button>
+      </div>
 
-      {/* Alert Messages */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2, animation: 'slideInAlert 0.3s ease-in-out' }}>
-          {error}
-        </Alert>
-      )}
-      {success && (
-        <Alert severity="success" sx={{ mb: 2, animation: 'slideInAlert 0.3s ease-in-out' }}>
-          {success}
-        </Alert>
-      )}
+      {/* Alerts */}
+      {error && <div className="alert-anim" style={{ padding: '12px 16px', background: 'rgba(252,92,101,0.1)', border: '1px solid rgba(252,92,101,0.3)', borderRadius: 10, color: '#c0392b', marginBottom: 16, fontSize: '0.87rem' }}>⚠️ {error}</div>}
+      {success && <div className="alert-anim" style={{ padding: '12px 16px', background: 'rgba(67,233,123,0.12)', border: '1px solid rgba(67,233,123,0.35)', borderRadius: 10, color: '#2eb86e', marginBottom: 16, fontSize: '0.87rem' }}>✅ {success}</div>}
 
-      {/* Loading State */}
-      {loading && !error ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-          <CircularProgress sx={{ color: '#667eea' }} />
-        </Box>
+      {loading && sales.length === 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ height: 110, borderRadius: 18, background: 'var(--surface-2)', animation: `pulse 1.5s ease-in-out infinite`, animationDelay: `${i * 0.1}s` }} />
+          ))}
+        </div>
       ) : (
         <>
-          {/* ============================================================
-              SALES STATISTICS CARDS
-              ============================================================ */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          {/* Stats row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+            <StatCard label="Today's Sales" value={stats.todaySales} prefix="Rs. " gradient="var(--grad-primary)" delay="0s" />
+            <StatCard label="This Week" value={stats.thisWeekSales} prefix="Rs. " gradient="var(--grad-pink)" delay="0.07s" />
+            <StatCard label="This Month" value={stats.thisMonthSales} prefix="Rs. " gradient="var(--grad-cyan)" delay="0.14s" />
+            <StatCard label="Total Orders" value={stats.orderCount} prefix="" gradient="var(--grad-gold)" delay="0.21s" />
+          </div>
 
-            {/* Today's Sales Card */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.4s ease-in-out',
-                  backgroundImage: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 24px rgba(102, 126, 234, 0.2)',
-                  }
+          {/* Analytics section */}
+          <h2 className="fade-slide-up" style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, animationDelay: '0.25s' }}>
+            Revenue Analytics
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
+            <AnalyticsCard label="Today's Revenue" value={analytics.daily_revenue} prefix="Rs. " gradient="var(--grad-primary)" icon="💰" delay="0.28s" />
+            <AnalyticsCard label="Monthly Revenue" value={analytics.monthly_revenue} prefix="Rs. " gradient="var(--grad-pink)" icon="📅" delay="0.34s" />
+            <AnalyticsCard
+              label="Top Product"
+              value={analytics.top_selling_product ? analytics.top_selling_product.name : 'N/A'}
+              gradient="var(--grad-cyan)" icon="🏆" delay="0.40s"
+            />
+          </div>
+
+          {/* Chart */}
+          {analytics.daily_sales_chart && analytics.daily_sales_chart.length > 0 && (
+            <div className="fade-slide-up" style={{ background: '#fff', borderRadius: 20, padding: '24px 28px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', marginBottom: 28, animationDelay: '0.44s' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20 }}>
+                📈 Last 7 Days Revenue
+              </h2>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={analytics.daily_sales_chart} margin={{ top: 5, right: 10, left: 10, bottom: 5 }} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#9999bb', fontSize: 12, fontFamily: 'var(--font)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#9999bb', fontSize: 11, fontFamily: 'var(--font)' }} axisLine={false} tickLine={false} tickFormatter={v => `Rs.${v}`} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(108,99,255,0.06)', radius: 8 }} />
+                  <Bar dataKey="revenue" radius={[10, 10, 3, 3]} maxBarSize={56}>
+                    {analytics.daily_sales_chart.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Table header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Transaction History
+            </h2>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '0.9rem', opacity: 0.4 }}>🔍</span>
+              <input
+                type="text" placeholder="Search by product..."
+                value={search} onChange={e => setSearch(e.target.value)}
+                style={{
+                  padding: '9px 16px 9px 34px', borderRadius: 10, border: '1.5px solid var(--border)',
+                  outline: 'none', fontFamily: 'var(--font)', fontSize: '0.86rem',
+                  color: 'var(--text-primary)', background: '#fff', width: 210, transition: 'border-color 0.2s',
                 }}
-              >
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    📅 Today's Sales
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    Rs. {stats.todaySales.toFixed(2)}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+                onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+          </div>
 
-            {/* This Week's Sales Card */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.5s ease-in-out',
-                  backgroundImage: 'linear-gradient(135deg, #f093fb15 0%, #f5576c15 100%)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 24px rgba(245, 87, 108, 0.2)',
-                  }
-                }}
-              >
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    📊 This Week
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    Rs. {stats.thisWeekSales.toFixed(2)}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* This Month's Sales Card */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.6s ease-in-out',
-                  backgroundImage: 'linear-gradient(135deg, #4facfe15 0%, #00f2fe15 100%)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 24px rgba(79, 172, 254, 0.2)',
-                  }
-                }}
-              >
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    📈 This Month
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    Rs. {stats.thisMonthSales.toFixed(2)}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Total Orders Card */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.7s ease-in-out',
-                  backgroundImage: 'linear-gradient(135deg, #fa709a15 0%, #fee14015 100%)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 24px rgba(250, 112, 154, 0.2)',
-                  }
-                }}
-              >
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    📦 Total Orders
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {stats.orderCount || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* ============================================================
-              SALES ANALYTICS SECTION
-              ============================================================ */}
-          <Typography
-            variant="h5"
-            component="h2"
-            gutterBottom
-            sx={{
-              mb: 3,
-              fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            📊 Revenue Analytics
-          </Typography>
-
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            {/* Daily Revenue Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.4s ease-in-out',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 30px rgba(102, 126, 234, 0.4)',
-                  }
-                }}
-              >
-                <CardContent>
-                  <Typography sx={{ fontWeight: 'bold', opacity: 0.9, fontSize: '0.9rem' }}>
-                    💰 Today's Revenue
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1 }}>
-                    Rs. {analytics.daily_revenue.toFixed(2)}
-                  </Typography>
-                  <Typography sx={{ opacity: 0.8, mt: 0.5, fontSize: '0.85rem' }}>
-                    Revenue earned today
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Monthly Revenue Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.5s ease-in-out',
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  color: 'white',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 30px rgba(245, 87, 108, 0.4)',
-                  }
-                }}
-              >
-                <CardContent>
-                  <Typography sx={{ fontWeight: 'bold', opacity: 0.9, fontSize: '0.9rem' }}>
-                    📅 Monthly Revenue
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1 }}>
-                    Rs. {analytics.monthly_revenue.toFixed(2)}
-                  </Typography>
-                  <Typography sx={{ opacity: 0.8, mt: 0.5, fontSize: '0.85rem' }}>
-                    Revenue this month
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            {/* Top Selling Product Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  animation: 'scaleUp 0.6s ease-in-out',
-                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                  color: 'white',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 12px 30px rgba(79, 172, 254, 0.4)',
-                  }
-                }}
-              >
-                <CardContent>
-                  <Typography sx={{ fontWeight: 'bold', opacity: 0.9, fontSize: '0.9rem' }}>
-                    🏆 Top Selling Product
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1 }}>
-                    {analytics.top_selling_product ? analytics.top_selling_product.name : 'N/A'}
-                  </Typography>
-                  <Typography sx={{ opacity: 0.8, mt: 0.5, fontSize: '0.85rem' }}>
-                    {analytics.top_selling_product
-                      ? `${analytics.top_selling_product.total_quantity_sold} units sold`
-                      : 'No sales yet'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* ============================================================
-              REVENUE BAR CHART - LAST 7 DAYS
-              ============================================================ */}
-          <Paper
-            sx={{
-              p: 3,
-              mb: 4,
-              borderRadius: '15px',
-              animation: 'slideInTop 0.5s ease-in-out',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-            }}
-          >
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{
-                fontWeight: 'bold',
-                mb: 3,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              📈 Last 7 Days Revenue
-            </Typography>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={analytics.daily_sales_chart} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: '#666', fontSize: 12, fontWeight: 500 }}
-                  axisLine={{ stroke: '#e0e0e0' }}
-                />
-                <YAxis
-                  tick={{ fill: '#666', fontSize: 12 }}
-                  axisLine={{ stroke: '#e0e0e0' }}
-                  tickFormatter={(value) => `Rs.${value}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    border: 'none',
-                    borderRadius: '10px',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                    padding: '10px 15px',
-                  }}
-                  formatter={(value) => [`Rs. ${value.toFixed(2)}`, 'Revenue']}
-                  cursor={{ fill: 'rgba(102, 126, 234, 0.08)' }}
-                />
-                <Bar dataKey="revenue" radius={[8, 8, 0, 0]} barSize={40}>
-                  {analytics.daily_sales_chart.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
-
-          {/* Record Sale Button */}
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpen(true)}
-            sx={{
-              mb: 2,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 5px 20px rgba(102, 126, 234, 0.4)',
-              }
-            }}
-          >
-            ➕ Record Sale
-          </Button>
-
-          {/* Empty State */}
-          {sales.length === 0 ? (
-            <Paper
-              sx={{
-                p: 3,
-                textAlign: 'center',
-                animation: 'fadeIn 0.4s ease-in-out',
-                backgroundImage: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-                borderRadius: '15px',
-              }}
-            >
-              <Typography variant="body1" color="textSecondary" sx={{ fontSize: '1.1rem' }}>
-                📭 No sales records yet. Click "Record Sale" to add one.
-              </Typography>
-            </Paper>
+          {/* Sales Table */}
+          {filteredSales.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '50px 20px', background: '#fff', borderRadius: 20, border: '1px dashed var(--border)' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 12 }}>📭</div>
+              <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {search ? 'No matching sales found' : 'No sales records yet. Click "Record Sale" to add one.'}
+              </div>
+            </div>
           ) : (
-            // ============================================================
-            // SALES TABLE
-            // ============================================================
-            <TableContainer
-              component={Paper}
-              sx={{
-                animation: 'slideInTop 0.4s ease-in-out',
-                borderRadius: '15px',
-                overflow: 'hidden',
-              }}
-            >
-              <Table>
-                {/* Table Header */}
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      backgroundColor: '#f5f5f5',
-                      background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
-                    }}
-                  >
-                    <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>Product</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="right">Quantity</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="right">Total Price</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#333' }} align="center">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-
-                {/* Table Body - Sale Rows */}
-                <TableBody>
-                  {sales.map((sale) => {
-                    const product = products.find(p => p.id === sale.product_id);
+            <div className="fade-slide-up" style={{ background: '#fff', borderRadius: 20, border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', overflow: 'hidden', animationDelay: '0.5s' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font)' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(108,99,255,0.04)', borderBottom: '1px solid var(--border)' }}>
+                    {['#', 'Product', 'Qty', 'Total Price', 'Date', 'Actions'].map(h => (
+                      <th key={h} style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.73rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSales.map((sale, idx) => {
+                    const prod = products.find(p => p.id === sale.product_id);
                     return (
-                      <TableRow
+                      <tr
                         key={sale.id}
-                        hover
-                        sx={{
-                          transition: 'all 0.2s ease',
-                          '&:hover': {
-                            backgroundColor: 'rgba(102, 126, 234, 0.05)',
-                          }
-                        }}
+                        style={{ borderBottom: idx < filteredSales.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(108,99,255,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
                       >
-                        <TableCell>{sale.id}</TableCell>
-                        <TableCell sx={{ fontWeight: 500 }}>
-                          {product ? product.name : `Product #${sale.product_id}`}
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 500 }}>{sale.quantity}</TableCell>
-                        <TableCell align="right">
-                          <span style={{ color: '#667eea', fontWeight: 'bold' }}>
-                            Rs. {parseFloat(sale.total_price).toFixed(2)}
-                          </span>
-                        </TableCell>
-                        <TableCell>{new Date(sale.sale_date).toLocaleDateString()}</TableCell>
-                        <TableCell align="center">
-                          {/* Delete Button */}
-                          <Button
-                            size="small"
-                            color="error"
-                            startIcon={<DeleteIcon />}
+                        <td style={{ padding: '13px 18px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>{sale.id}</td>
+                        <td style={{ padding: '13px 18px', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                          {prod ? prod.name : `Product #${sale.product_id}`}
+                        </td>
+                        <td style={{ padding: '13px 18px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{sale.quantity}</td>
+                        <td style={{ padding: '13px 18px', fontWeight: 700, color: 'var(--primary)', fontSize: '0.9rem' }}>
+                          Rs. {parseFloat(sale.total_price).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '13px 18px', color: 'var(--text-secondary)', fontSize: '0.83rem' }}>
+                          {new Date(sale.sale_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                        <td style={{ padding: '13px 18px' }}>
+                          <button
                             onClick={() => handleDelete(sale.id)}
-                            sx={{
-                              transition: 'all 0.2s ease',
-                              '&:hover': {
-                                backgroundColor: 'rgba(245, 87, 108, 0.1)',
-                              }
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(252,92,101,0.12)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            style={{
+                              border: '1.5px solid rgba(252,92,101,0.4)', borderRadius: 8,
+                              padding: '5px 12px', background: 'transparent', color: '#fc5c65',
+                              fontFamily: 'var(--font)', fontWeight: 600, fontSize: '0.78rem',
+                              cursor: 'pointer', transition: 'background 0.2s',
                             }}
                           >
                             Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                          </button>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </tbody>
+              </table>
+            </div>
           )}
-
-          {/* ============================================================
-              RECORD SALE MODAL DIALOG
-              ============================================================ */}
-          <Dialog
-            open={open}
-            onClose={() => setOpen(false)}
-            maxWidth="sm"
-            fullWidth
-            sx={{
-              '& .MuiPaper-root': {
-                animation: 'scaleUp 0.3s ease-in-out',
-                borderRadius: '15px',
-              }
-            }}
-          >
-            <DialogTitle sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-              ➕ Record New Sale
-            </DialogTitle>
-
-            <DialogContent sx={{ pt: 2 }}>
-              {/* Product Selection Dropdown */}
-              <TextField
-                select
-                label="Product"
-                fullWidth
-                margin="normal"
-                value={newSale.product_id}
-                onChange={(e) => setNewSale({ ...newSale, product_id: e.target.value })}
-                required
-                disabled={loading}
-                placeholder="Select a product"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    transition: 'all 0.3s ease',
-                    '&:hover fieldset': { borderColor: '#667eea' },
-                    '&.Mui-focused fieldset': { borderColor: '#667eea', boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)' },
-                  },
-                }}
-              >
-                {products.map((product) => (
-                  <MenuItem key={product.id} value={product.id}>
-                    {product.name} (Stock: {product.quantity})
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              {/* Quantity Input */}
-              <TextField
-                label="Quantity"
-                type="number"
-                fullWidth
-                margin="normal"
-                value={newSale.quantity}
-                onChange={(e) => setNewSale({ ...newSale, quantity: e.target.value })}
-                inputProps={{ min: '1' }}
-                required
-                placeholder="Enter quantity"
-                disabled={loading}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    transition: 'all 0.3s ease',
-                    '&:hover fieldset': { borderColor: '#667eea' },
-                    '&.Mui-focused fieldset': { borderColor: '#667eea', boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)' },
-                  },
-                }}
-              />
-
-              {/* Total Price Input */}
-              <TextField
-                label="Total Price"
-                type="number"
-                fullWidth
-                margin="normal"
-                value={newSale.total_price}
-                onChange={(e) => setNewSale({ ...newSale, total_price: e.target.value })}
-                inputProps={{ step: '0.01', min: '0' }}
-                required
-                placeholder="0.00"
-                disabled={loading}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    transition: 'all 0.3s ease',
-                    '&:hover fieldset': { borderColor: '#667eea' },
-                    '&.Mui-focused fieldset': { borderColor: '#667eea', boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)' },
-                  },
-                }}
-              />
-            </DialogContent>
-
-            {/* Dialog Actions */}
-            <DialogActions sx={{ p: 2 }}>
-              <Button
-                onClick={() => setOpen(false)}
-                disabled={loading}
-                sx={{ transition: 'all 0.2s ease', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
-              >
-                ✕ Cancel
-              </Button>
-              <Button
-                onClick={handleCreate}
-                variant="contained"
-                sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 5px 15px rgba(102, 126, 234, 0.4)',
-                  }
-                }}
-                disabled={loading}
-              >
-                {loading ? '🔄 Recording...' : '✓ Record Sale'}
-              </Button>
-            </DialogActions>
-          </Dialog>
         </>
       )}
-    </Box>
+
+      {/* Record Sale Modal */}
+      {open && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,10,30,0.5)', backdropFilter: 'blur(6px)' }}
+          onClick={e => e.target === e.currentTarget && setOpen(false)}
+        >
+          <div className="scale-in" style={{ background: '#fff', borderRadius: 24, padding: 36, width: '100%', maxWidth: 440, boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <div>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Record New Sale</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.83rem', marginTop: 4 }}>Enter the details of the sale</p>
+              </div>
+              <button onClick={() => setOpen(false)} style={{ border: 'none', background: 'var(--surface-2)', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>×</button>
+            </div>
+
+            <FloatingInput label="Product *" value={newSale.product_id} onChange={e => setNewSale({ ...newSale, product_id: e.target.value })} disabled={loading}>
+              <option value="">Select a product</option>
+              {products.map(p => <option key={p.id} value={p.id}>{p.name} (Stock: {p.quantity})</option>)}
+            </FloatingInput>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <FloatingInput label="Quantity *" type="number" value={newSale.quantity} onChange={e => setNewSale({ ...newSale, quantity: e.target.value })} disabled={loading} placeholder="1" />
+              <FloatingInput label="Total Price (Rs.) *" type="number" value={newSale.total_price} onChange={e => setNewSale({ ...newSale, total_price: e.target.value })} disabled={loading} placeholder="0.00" />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={() => setOpen(false)} disabled={loading} style={{ flex: 1, padding: '12px', border: '1.5px solid var(--border)', borderRadius: 10, background: 'transparent', color: 'var(--text-secondary)', fontFamily: 'var(--font)', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate} disabled={loading}
+                onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-2px)', e.currentTarget.style.boxShadow = '0 8px 20px rgba(108,99,255,0.35)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = '', e.currentTarget.style.boxShadow = '0 4px 14px rgba(108,99,255,0.2)')}
+                style={{
+                  flex: 2, padding: '12px', background: loading ? '#a0a0c0' : 'var(--grad-primary)',
+                  border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'var(--font)',
+                  fontWeight: 700, fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(108,99,255,0.2)', transition: 'transform 0.25s, box-shadow 0.25s',
+                }}
+              >
+                {loading ? '⏳ Recording...' : '+ Record Sale'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

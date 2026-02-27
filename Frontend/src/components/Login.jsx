@@ -1,213 +1,194 @@
-// ============================================================
-// LOGIN COMPONENT
-// ============================================================
-// User login form with email/password authentication.
-// Handles API calls to authenticate user and store JWT token.
-// Includes error handling and loading states.
-
+// Login.jsx — Split-screen premium login page
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper, Alert, Container } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-// ============================================================
-// LOGIN COMPONENT
-// ============================================================
+function FloatingInput({ label, type = 'text', value, onChange, disabled, placeholder }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ position: 'relative', marginBottom: 20 }}>
+      <label style={{
+        display: 'block', fontSize: '0.8rem', fontWeight: 600,
+        color: focused ? 'var(--primary)' : 'var(--text-secondary)',
+        marginBottom: 7, transition: 'color 0.2s',
+        fontFamily: 'var(--font)',
+      }}>
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        disabled={disabled}
+        placeholder={placeholder}
+        required
+        style={{
+          width: '100%', padding: '13px 18px',
+          border: `2px solid ${focused ? 'var(--primary)' : 'var(--border)'}`,
+          borderRadius: 12, outline: 'none',
+          fontFamily: 'var(--font)', fontSize: '0.95rem',
+          color: 'var(--text-primary)', background: '#fff',
+          transition: 'border-color 0.25s, box-shadow 0.25s',
+          boxShadow: focused ? '0 0 0 4px rgba(108,99,255,0.12)' : 'none',
+        }}
+      />
+    </div>
+  );
+}
+
 function Login({ onLogin }) {
-  // ============================================================
-  // STATE MANAGEMENT
-  // ============================================================
-  const [email, setEmail] = useState('');           // Email input value
-  const [password, setPassword] = useState('');     // Password input value
-  const [error, setError] = useState('');           // Error message display
-  const [loading, setLoading] = useState(false);    // Loading state for submit button
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ============================================================
-  // FORM SUBMISSION HANDLER
-  // ============================================================
-  /**
-   * Handles form submission and user authentication
-   * Makes API request to backend login endpoint
-   * On success: stores token and redirects to dashboard
-   * On failure: displays error message to user
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      // Send login request to backend API
       const res = await axios.post('http://localhost:8000/users/login', { email, password });
-      
-      // Call parent component's login handler with token
       onLogin(res.data.access_token);
-      
-      // Redirect to dashboard
       navigate('/');
     } catch (err) {
-      console.error('Login error:', err);
-      // Display error message from API or generic message
       setError(err.response?.data?.detail || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh',
-        }}
-      >
-        {/* Login Form Card */}
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            p: 4, 
-            width: '100%',
-            animation: 'scaleUp 0.4s ease-in-out',
+    <div style={{
+      display: 'flex', minHeight: '100vh', width: '100%', fontFamily: 'var(--font)',
+    }}>
+      {/* Left panel — branded */}
+      <div style={{
+        flex: 1, background: 'var(--grad-primary)', position: 'relative',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 60, overflow: 'hidden',
+      }}>
+        {/* animated blobs */}
+        <div className="blob-1" style={{
+          position: 'absolute', top: -80, left: -80,
+          background: 'rgba(255,255,255,0.08)',
+        }} />
+        <div className="blob-2" style={{
+          position: 'absolute', bottom: -60, right: -60,
+          background: 'rgba(255,255,255,0.06)',
+        }} />
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', color: '#fff' }}>
+          <div className="float" style={{
+            width: 80, height: 80, borderRadius: 24,
+            background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 28px',
             backdropFilter: 'blur(10px)',
-            background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '15px',
-            boxShadow: '0 8px 32px rgba(31, 38, 135, 0.37)',
-          }}
-        >
-          {/* Page Title */}
-          <Typography 
-            variant="h5" 
-            component="h1" 
-            gutterBottom 
-            sx={{ 
-              mb: 3, 
-              textAlign: 'center', 
-              fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            🔐 Login
-          </Typography>
+            border: '1px solid rgba(255,255,255,0.3)',
+            fontSize: '2.2rem',
+          }}>
+            📦
+          </div>
+          <h1 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 14 }}>
+            SmartStock
+          </h1>
+          <p style={{ opacity: 0.85, fontSize: '1rem', lineHeight: 1.7, maxWidth: 280 }}>
+            Your all-in-one platform for managing inventory, tracking sales, and growing your business.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 36 }}>
+            {['📦 Products', '💹 Sales', '📊 Analytics'].map(tag => (
+              <span key={tag} style={{
+                padding: '6px 14px', borderRadius: 99,
+                background: 'rgba(255,255,255,0.18)',
+                fontSize: '0.78rem', fontWeight: 600,
+                backdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255,255,255,0.25)',
+              }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
 
-          {/* Error Alert */}
+      {/* Right panel — form */}
+      <div style={{
+        width: '460px', minWidth: '360px', background: '#fff',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '60px 52px',
+        animation: 'slideInRight 0.5s var(--ease) both',
+      }}>
+        <div style={{ width: '100%', maxWidth: 360 }}>
+          <div style={{ marginBottom: 36 }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>
+              Welcome back 👋
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Sign in to your SmartStock account
+            </p>
+          </div>
+
           {error && (
-            <Alert 
-              severity="error" 
-              sx={{ 
-                mb: 2,
-                animation: 'slideInAlert 0.3s ease-in-out',
-              }}
-            >
-              {error}
-            </Alert>
+            <div className="alert-anim" style={{
+              padding: '12px 16px', background: 'rgba(252,92,101,0.1)',
+              border: '1px solid rgba(252,92,101,0.3)', borderRadius: 10,
+              color: '#c0392b', marginBottom: 20, fontSize: '0.87rem',
+            }}>
+              ⚠️ {error}
+            </div>
           )}
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit}>
-            {/* Email Input Field */}
-            <TextField
-              label="Email"
+            <FloatingInput
+              label="Email Address"
               type="email"
-              fullWidth
-              margin="normal"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onChange={e => setEmail(e.target.value)}
               disabled={loading}
-              placeholder="Enter your email"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease',
-                  '&:hover fieldset': {
-                    borderColor: '#667eea',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#667eea',
-                    boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-                  },
-                },
-              }}
+              placeholder="you@example.com"
             />
-
-            {/* Password Input Field */}
-            <TextField
+            <FloatingInput
               label="Password"
               type="password"
-              fullWidth
-              margin="normal"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              onChange={e => setPassword(e.target.value)}
               disabled={loading}
-              placeholder="Enter your password"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease',
-                  '&:hover fieldset': {
-                    borderColor: '#667eea',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#667eea',
-                    boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-                  },
-                },
-              }}
+              placeholder="••••••••"
             />
 
-            {/* Submit Button */}
-            <Button
+            <button
               type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              sx={{ 
-                mt: 3,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                padding: '10px 20px',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 5px 20px rgba(102, 126, 234, 0.4)',
-                },
-              }}
               disabled={loading}
+              onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-2px)', e.currentTarget.style.boxShadow = '0 10px 30px rgba(108,99,255,0.4)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = '', e.currentTarget.style.boxShadow = '0 6px 20px rgba(108,99,255,0.25)')}
+              style={{
+                width: '100%', padding: '14px',
+                background: loading ? '#a0a0c0' : 'var(--grad-primary)',
+                border: 'none', borderRadius: 12,
+                color: '#fff', fontFamily: 'var(--font)',
+                fontWeight: 700, fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 6px 20px rgba(108,99,255,0.25)',
+                transition: 'transform 0.25s, box-shadow 0.25s',
+                marginTop: 8,
+              }}
             >
-              {loading ? '🔄 Logging in...' : '✓ Login'}
-            </Button>
+              {loading ? '⏳ Signing in...' : 'Sign In →'}
+            </button>
           </form>
 
-          {/* Register Link */}
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="body2">
-              Don't have an account? {' '}
-              <a 
-                href="/register" 
-                style={{ 
-                  color: '#667eea', 
-                  textDecoration: 'none', 
-                  fontWeight: 'bold',
-                  transition: 'color 0.3s ease',
-                }}
-                onMouseEnter={(e) => e.target.style.color = '#764ba2'}
-                onMouseLeave={(e) => e.target.style.color = '#667eea'}
-              >
-                Register here
-              </a>
-            </Typography>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+          <p style={{ textAlign: 'center', marginTop: 28, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+            Don't have an account?{' '}
+            <a href="/register" style={{
+              color: 'var(--primary)', fontWeight: 700, textDecoration: 'none',
+            }}>
+              Create one
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
