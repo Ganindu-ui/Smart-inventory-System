@@ -111,7 +111,7 @@ function Dashboard({ user }) {
     fetchStats();
   }, []);
 
-  const displayName = user ? (user.sub || user.email || user.username || 'there') : 'there';
+  const displayName = user ? (user.username || user.sub || 'there') : 'there';
 
   const cards = [
     {

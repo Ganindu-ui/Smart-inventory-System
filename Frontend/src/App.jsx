@@ -16,6 +16,18 @@ function parseJwt(token) {
   try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
 }
 
+// If stored token is old (no username), clear it so user gets fresh token on next login
+(function clearOldToken() {
+  const tok = localStorage.getItem('token');
+  if (tok) {
+    const parsed = parseJwt(tok);
+    if (parsed && !parsed.username) {
+      localStorage.removeItem('token');
+    }
+  }
+})();
+
+
 // Inner layout component — needs Router context for useLocation
 function AppLayout({ token, user, handleLogin, handleLogout }) {
   const location = useLocation();

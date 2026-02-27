@@ -66,9 +66,12 @@ function Sidebar({ isAuthenticated, user, onLogout }) {
   const [hovered, setHovered] = useState(null);
 
   const displayName = user
-    ? (user.sub || user.email || user.username || 'User')
+    ? (user.username || user.sub || 'User')
     : 'Guest';
-  const initials = displayName.slice(0, 2).toUpperCase();
+  // For initials: use username initials, or first 2 chars of name
+  const initials = displayName.includes('@')
+    ? displayName.slice(0, 2).toUpperCase()
+    : displayName.slice(0, 2).toUpperCase();
 
   return (
     <aside
