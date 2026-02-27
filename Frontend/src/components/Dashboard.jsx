@@ -116,6 +116,7 @@ export default function Dashboard({ user }) {
   const [loading, setLoading]   = useState(true);
   const [activityTab, setActivityTab] = useState('today');
   const [productSearch, setProductSearch] = useState('');
+  const [chartPeriod, setChartPeriod] = useState('weekly'); // 'weekly' | 'monthly'
 
   const displayName = user ? (user.username || user.sub || 'there') : 'there';
   const now = new Date();
@@ -148,25 +149,36 @@ export default function Dashboard({ user }) {
   const weeklyRev  = sales.filter(s => new Date(s.sale_date) >= weekAgo).reduce((s,x) => s+x.total_price, 0);
   const monthlyRev = sales.filter(s => new Date(s.sale_date) >= monthStart).reduce((s,x) => s+x.total_price, 0);
 
-  // ── Chart data: last 7 days ──────────────────────────────
-  const chartData = analytics.daily_sales_chart?.length > 0
-    ? analytics.daily_sales_chart
-    : (() => {
-        // build from raw sales
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(today.getTime() - (6 - i) * 86400000);
-          const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const rev = sales.filter(s => {
-            const sd = new Date(s.sale_date); sd.setHours(0,0,0,0);
-            return sd.getTime() === d.getTime();
-          }).reduce((sum, x) => sum + x.total_price, 0);
-          return { date: label, revenue: rev };
-        });
-        return days;
-      })();
+  // ── Chart data builders ────────────────────────────────
+  const baseToday = new Date(); baseToday.setHours(0, 0, 0, 0);
 
-  // ── Sparkline data (random-looking but derived) ──────────
-  const spark = chartData.map(d => d.revenue || 0);
+  // Weekly: last 7 individual days, labeled by day abbreviation
+  const weeklyData = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(baseToday.getTime() - (6 - i) * 86400000);
+    const dEnd = new Date(d.getTime()); dEnd.setHours(23, 59, 59, 999);
+    const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const rev = sales
+      .filter(s => { const sd = new Date(s.sale_date); return sd >= d && sd <= dEnd; })
+      .reduce((sum, x) => sum + x.total_price, 0);
+    return { date: label, revenue: rev };
+  });
+
+  // Monthly: last 30 individual days
+  const monthlyData = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(baseToday.getTime() - (29 - i) * 86400000);
+    const dEnd = new Date(d.getTime()); dEnd.setHours(23, 59, 59, 999);
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const rev = sales
+      .filter(s => { const sd = new Date(s.sale_date); return sd >= d && sd <= dEnd; })
+      .reduce((sum, x) => sum + x.total_price, 0);
+    return { date: label, revenue: rev };
+  });
+
+  // Active chart dataset (weekly default)
+  const chartData = chartPeriod === 'monthly' ? monthlyData : weeklyData;
+
+  // Sparklines always use weekly (daily) data
+  const spark = weeklyData.map(d => d.revenue || 0);
   const sparkFallback = (seed) => [seed*2, seed*1.5, seed*3, seed*2.5, seed*4, seed*3.5, seed*5].map(Math.floor);
 
   // ── Activity feed: recent sales as activity ─────────────
@@ -310,10 +322,27 @@ export default function Dashboard({ user }) {
 
         {/* ── Sales Report ── */}
         <div className="fade-slide-up" style={{ ...card, animationDelay: '0.1s' }}>
-          <SectionHeader title="Sales Report" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <h2 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', margin: 0 }}>Sales Report</h2>
+            {/* Period toggle - Weekly / Monthly only */}
+            <div style={{ display: 'flex', gap: 4, background: 'var(--surface-2)', padding: 4, borderRadius: 10 }}>
+              {[['weekly', 'Weekly'], ['monthly', 'Monthly']].map(([key, label]) => (
+                <button key={key} onClick={() => setChartPeriod(key)} style={{
+                  padding: '5px 16px', border: 'none', borderRadius: 7,
+                  background: chartPeriod === key ? '#fff' : 'transparent',
+                  color: chartPeriod === key ? 'var(--primary)' : 'var(--text-muted)',
+                  fontFamily: 'var(--font)', fontWeight: 600, fontSize: '0.75rem',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  boxShadow: chartPeriod === key ? 'var(--shadow-card)' : 'none',
+                }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+          <ResponsiveContainer key={chartPeriod} width="100%" height={220}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: chartPeriod === 'weekly' ? 0 : 10 }}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="10%" stopColor="#6c63ff" stopOpacity={0.25}/>
@@ -321,10 +350,15 @@ export default function Dashboard({ user }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: '#9999bb', fontSize: 11, fontFamily: 'var(--font)' }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: '#9999bb', fontSize: 10, fontFamily: 'var(--font)' }}
+                axisLine={false} tickLine={false}
+                interval={chartPeriod === 'weekly' ? 0 : 4}
+              />
               <YAxis tick={{ fill: '#9999bb', fontSize: 10, fontFamily: 'var(--font)' }} axisLine={false} tickLine={false} tickFormatter={v => `Rs.${v}`} width={55}/>
               <Tooltip content={<AreaTooltip />} />
-              <Area type="monotone" dataKey="revenue" stroke="#6c63ff" strokeWidth={2.5} fill="url(#revGrad)" dot={false} activeDot={{ r: 5, fill: '#6c63ff', stroke: '#fff', strokeWidth: 2 }} />
+              <Area type="monotone" dataKey="revenue" stroke="#6c63ff" strokeWidth={2.5} fill="url(#revGrad)" dot={{ r: 3, fill: '#6c63ff', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#6c63ff', stroke: '#fff', strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
 
